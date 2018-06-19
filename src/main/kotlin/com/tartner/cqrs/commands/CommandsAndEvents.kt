@@ -1,10 +1,10 @@
 package com.tartner.cqrs.commands
 
 import com.fasterxml.jackson.annotation.*
-import java.io.Serializable
+import com.tartner.vertx.functional.*
+import java.io.*
 import java.util.*
 import kotlin.reflect.*
-import com.tartner.vertx.functional.*
 
 /** Marker interface for objects that are internally serialized. */
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY)
