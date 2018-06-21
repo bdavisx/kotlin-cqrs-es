@@ -1,51 +1,34 @@
 package com.tartner.cqrs.commands
 
+import com.tartner.cqrs.actors.*
 import kotlinx.coroutines.experimental.channels.*
 import org.slf4j.*
 import java.util.concurrent.*
 
-sealed class CommandBus
-data class RegisterChannelAtAddress<T: Command>(val channel: SendChannel<T>, val address: String): CommandBus()
-data class SendCommandToAddress<T: Command>(val address: String, val command: T): CommandBus()
-
-/**
+ /**
  Class that handles commands in the system. It allows registering a channel(s) to handle commands
  that come to a particular address. It also allows registering for a particular command class, which
  registers the channel(s) at the fully qualified name of the command class.
  */
-class CommandBusActor {
+class CommandBusActor(channel: FunctionActorSendChannel): FunctionActor(channel) {
   private val addressToChannels = ConcurrentHashMap<String, ChannelContainer>()
   private val log = LoggerFactory.getLogger(CommandBusActor::class.java)
 
-  companion object {
-    fun create() {
-      val channel = actor<CommandBus> {
-        val me = CommandBusActor()
-
-        for (message in channel) me.onReceive(message)
-      }
-    }
-  }
-
-  private suspend fun onReceive(message: CommandBus) {
-    when (message) {
-      is RegisterChannelAtAddress<out Command> -> registerChannel(message)
-      is SendCommandToAddress<*> -> sendCommandToAddress(message)
-    }
-  }
-
-  private fun registerChannel(message: RegisterChannelAtAddress<out Command>) {
-    val channels: ChannelContainer = addressToChannels.getOrElse(message.address, {ChannelContainer()})
-    val channel: SendChannel<Nothing> = message.channel
+  suspend fun <T: Command> registerChannel(channel: SendChannel<T>, address: String) = act {
+    val channels: ChannelContainer = addressToChannels.getOrElse(address, {ChannelContainer()})
     channels.add(channel)
   }
 
-  private suspend fun sendCommandToAddress(message: SendCommandToAddress<*>) {
-    val channels = addressToChannels[message.address]
+  suspend fun <T: Command> sendCommandToAddress(address: String, command: T) {
+    val channels = addressToChannels[address]
     if (channels == null) {
-      log.error("Command sent to address without handler: address: ${message.address}; command: ${message.command}")
+      log.error("Command sent to address without handler: address: ${address}; command: ${command}")
     } else {
-      channels.sendMessageToNextChannel(message.command)
+      // TODO: fix - this could end up blocking if the actor/channel being "called" blocks, we need
+      // to figure out a way around this - can't we just launch a new coroutine for each call?
+      // TODO: we may not need to worry about multiple channels, according to a doc I saw, multiple
+      // actors (coroutines) can listen to the same channel
+      channels.sendMessageToNextChannel(command)
     }
   }
 }
@@ -62,6 +45,7 @@ class ChannelContainer {
     // we're assuming there will *always* be at least 1 channel, if we allow remove, then this needs
     // to be updated
     if (currentChannel >= channels.size) { currentChannel = 0 }
+
     // TODO: There's got to be a better way to do this, but I've got something wrong in the generics
     // or need to specify 'out' somewhere
     val sendChannel: SendChannel<Command> = channels[currentChannel] as SendChannel<Command>
