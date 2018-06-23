@@ -17,7 +17,7 @@
 
         <kotlin.compiler.jvmTarget>1.8</kotlin.compiler.jvmTarget>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <kotlin.coroutines.version>0.22.5</kotlin.coroutines.version>
+        <kotlin.coroutines.version>0.22.6-SNAPSHOT</kotlin.coroutines.version>
 
         <vertx.version>3.5.1</vertx.version>
         <jackson.version>2.9.5</jackson.version>
