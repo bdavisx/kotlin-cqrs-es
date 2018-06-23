@@ -31,7 +31,11 @@ class CommandBusActor(): FunctionActor() {
       log.error("Command sent to address without handler: address: ${address}; command: ${command}")
     } else {
       // launch to keep from blocking if the channel is "full"
-      launch { (channel as SendChannel<T>).send(command) }
+      launch {
+        log.debug("Before sendCommand... send $command")
+        (channel as SendChannel<T>).send(command)
+        log.debug("After sendCommand... send $command")
+      }
     }
   }
 }

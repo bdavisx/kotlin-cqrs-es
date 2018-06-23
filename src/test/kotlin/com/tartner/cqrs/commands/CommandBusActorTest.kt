@@ -28,18 +28,28 @@ internal class CommandBusActorTest {
     }
   }
 
-//  @Test
-//  fun testNotBlocking() {
-//    runBlocking {
-//      val commandChannel1 = Channel<Command>(1)
-//      val commandChannel2 = Channel<Command>(1)
-//
-//      val commandBus = CommandBusActor()
-//
-//      commandBus.registerChannelAtAddress("1", commandChannel1)
-//      commandBus.registerChannelAtAddress("2", commandChannel2)
-//
-//
-//    }
-//  }
+  @Test
+  fun testNotBlocking() {
+    runBlocking {
+      val commandChannel1 = Channel<Command>(1)
+      val commandChannel2 = Channel<Command>(1)
+
+      val commandBus = CommandBusActor()
+
+      commandBus.registerChannelAtAddress("1", commandChannel1)
+      commandBus.registerChannelAtAddress("2", commandChannel2)
+
+      val receivedCommandDeferred = CompletableDeferred<Command>()
+
+      launch { for (command in commandChannel2) receivedCommandDeferred.complete(command) }
+
+      commandBus.sendCommandToAddress("1", TestCommand(1))
+      commandBus.sendCommandToAddress("1", TestCommand(2))
+      commandBus.sendCommandToAddress("2", TestCommand(3))
+
+      val receivedCommand =  receivedCommandDeferred.await()
+      println(receivedCommand)
+
+    }
+  }
 }
