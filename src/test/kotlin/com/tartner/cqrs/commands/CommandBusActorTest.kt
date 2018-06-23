@@ -1,13 +1,17 @@
 package com.tartner.cqrs.commands
 
+import com.tartner.cqrs.actors.*
 import io.kotlintest.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.*
 import org.junit.*
 import org.slf4j.*
+import java.util.*
 
 data class TestCommand(val id: Int): Command
 data class TestCommand2(val id: Int): Command
+
+private val log = LoggerFactory.getLogger(CommandBusActorTest::class.java)
 
 internal class CommandBusActorTest {
   private val log = LoggerFactory.getLogger(CommandBusActorTest::class.java)
@@ -26,9 +30,7 @@ internal class CommandBusActorTest {
       launch { for (command in commandChannel) receivedCommandDeferred.complete(command) }
 
       commandBus.sendCommandToAddress(address, TestCommand(1))
-      val receivedCommand =  receivedCommandDeferred.await()
-
-      receivedCommand shouldNotBe null
+      receivedCommandDeferred.await()
     } }
   }
 
@@ -39,7 +41,6 @@ internal class CommandBusActorTest {
 
       val commandBus = CommandBusActor()
 
-      val address = "1"
       commandBus.registerCommand(TestCommand::class, commandChannel)
 
       val receivedCommandDeferred = CompletableDeferred<Command>()
@@ -47,9 +48,7 @@ internal class CommandBusActorTest {
       launch { for (command in commandChannel) receivedCommandDeferred.complete(command) }
 
       commandBus.sendCommand(TestCommand(1))
-      val receivedCommand =  receivedCommandDeferred.await()
-
-      receivedCommand shouldNotBe null
+      receivedCommandDeferred.await()
     } }
   }
 
@@ -73,11 +72,7 @@ internal class CommandBusActorTest {
       commandBus.sendCommandToAddress("1", TestCommand(2))
       commandBus.sendCommandToAddress("2", TestCommand(3))
 
-      val receivedCommand =  receivedCommandDeferred.await()
-
-      receivedCommand shouldNotBe null
-
-      log.debug(receivedCommand.toString())
+      receivedCommandDeferred.await()
     } }
   }
 
@@ -129,5 +124,48 @@ internal class CommandBusActorTest {
 
       launches.awaitAll()
     } }
+  }
+
+  @Test
+  fun testCommandFanOut() {
+    runBlocking { withTimeout(15000) {
+      val commandChannel = Channel<TestCommand>(Channel.UNLIMITED)
+      val totalActors = 500
+      val actors = (0..totalActors-1).map {TestFanOutActor(it, commandChannel)}.toList()
+
+      val commandBus = CommandBusActor()
+
+      commandBus.registerCommand(TestCommand::class, commandChannel)
+
+      val totalCommands = 5_000
+      for (i in (1..totalCommands)) {
+        commandBus.sendCommand(TestCommand(i))
+      }
+
+      actors.forEach {it.close()}
+      actors.forEach {it.join()}
+      actors.forEach {log.debug("$it")}
+      val sumOfCounters = actors.map { it.counter }.sum()
+      sumOfCounters shouldBe totalCommands
+    } }
+  }
+}
+
+
+class TestFanOutActor(val id: Int, channel: Channel<TestCommand>)
+  : AMonoActor<TestCommand>(mailbox = channel) {
+  var random = Random()
+  var counter = 0
+
+  override suspend fun onMessage(message: TestCommand) {
+    counter++
+//    if (id != 0) {
+//      val delay = Math.max(100, random.nextInt(id))
+//      delay(delay)
+//    }
+  }
+
+  override fun toString(): String {
+    return "TestFanOutActor(id=$id, counter=$counter)"
   }
 }

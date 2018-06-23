@@ -29,7 +29,7 @@ import kotlin.coroutines.experimental.*
 abstract class AMonoActor<T>(
   context: CoroutineContext = DefaultDispatcher,
   parent: Job? = null,
-  start: CoroutineStart = CoroutineStart.LAZY,
+  start: CoroutineStart = CoroutineStart.DEFAULT,
   mailbox: Channel<T> = Channel<T>(Channel.UNLIMITED)
 ) : AAbstractActor<T>(context, parent, start, mailbox) {
   /**

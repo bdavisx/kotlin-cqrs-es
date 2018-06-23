@@ -23,20 +23,17 @@ class CommandBusActor(): FunctionActor() {
   fun <T: Command> registerChannelAtAddress(address: String, channel: SendChannel<T>) =
     addressToChannel.put(address, channel)
 
-  fun <T: Command> sendCommand(command: T) =
+  suspend fun <T: Command> sendCommand(command: T) =
     sendCommandToAddress(command::class.qualifiedName!!, command)
 
-  fun <T: Command> sendCommandToAddress(address: String, command: T) {
+  suspend fun <T: Command> sendCommandToAddress(address: String, command: T) {
     val channel = addressToChannel[address]
     if (channel == null) {
       log.error("Command sent to address without handler: address: ${address}; command: ${command}")
     } else {
       // launch to keep from blocking if the channel is "full"
-      launch {
-        log.debugIf {"Before sendCommand... send $command"}
-        (channel as SendChannel<T>).send(command)
-        log.debugIf {"After sendCommand... send $command"}
-      }
+      launch { (channel as SendChannel<T>).send(command) }
+      yield()
     }
   }
 }
