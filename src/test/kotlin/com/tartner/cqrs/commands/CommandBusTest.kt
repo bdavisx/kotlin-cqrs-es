@@ -11,16 +11,16 @@ import java.util.*
 data class TestCommand(val id: Int): Command
 data class TestCommand2(val id: Int): Command
 
-private val log = LoggerFactory.getLogger(CommandBusActorTest::class.java)
+private val log = LoggerFactory.getLogger(CommandBusTest::class.java)
 
-internal class CommandBusActorTest {
-  private val log = LoggerFactory.getLogger(CommandBusActorTest::class.java)
+internal class CommandBusTest {
+  private val log = LoggerFactory.getLogger(CommandBusTest::class.java)
   @Test
   fun testMessageReceive() {
     runBlocking { withTimeout(500) {
       val commandChannel = Channel<Command>(Channel.UNLIMITED)
 
-      val commandBus = CommandBusActor()
+      val commandBus = CommandBus()
 
       val address = "1"
       commandBus.registerChannelAtAddress(address, commandChannel)
@@ -39,7 +39,7 @@ internal class CommandBusActorTest {
     runBlocking { withTimeout(500) {
       val commandChannel = Channel<Command>(Channel.UNLIMITED)
 
-      val commandBus = CommandBusActor()
+      val commandBus = CommandBus()
 
       commandBus.registerCommand(TestCommand::class, commandChannel)
 
@@ -58,7 +58,7 @@ internal class CommandBusActorTest {
       val commandChannel1 = Channel<Command>(1)
       val commandChannel2 = Channel<Command>(1)
 
-      val commandBus = CommandBusActor()
+      val commandBus = CommandBus()
 
       commandBus.registerChannelAtAddress("1", commandChannel1)
       commandBus.registerChannelAtAddress("2", commandChannel2)
@@ -82,7 +82,7 @@ internal class CommandBusActorTest {
       val commandChannel1 = Channel<Command>(1)
       val commandChannel2 = Channel<Command>(1)
 
-      val commandBus = CommandBusActor()
+      val commandBus = CommandBus()
 
       commandBus.registerChannelAtAddress("1", commandChannel1)
       commandBus.registerChannelAtAddress("2", commandChannel2)
@@ -107,7 +107,7 @@ internal class CommandBusActorTest {
       val commandChannel1 = Channel<Command>(1)
       val commandChannel2 = Channel<Command>(1)
 
-      val commandBus = CommandBusActor()
+      val commandBus = CommandBus()
 
       commandBus.registerCommand(TestCommand::class, commandChannel1)
       commandBus.registerCommand(TestCommand2::class, commandChannel2)
@@ -130,10 +130,10 @@ internal class CommandBusActorTest {
   fun testCommandFanOut() {
     runBlocking { withTimeout(15000) {
       val commandChannel = Channel<TestCommand>(Channel.UNLIMITED)
-      val totalActors = 500
+      val totalActors = 50
       val actors = (0..totalActors-1).map {TestFanOutActor(it, commandChannel)}.toList()
 
-      val commandBus = CommandBusActor()
+      val commandBus = CommandBus()
 
       commandBus.registerCommand(TestCommand::class, commandChannel)
 

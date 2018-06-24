@@ -1,9 +1,7 @@
 package com.tartner.cqrs.commands
 
-import com.tartner.cqrs.actors.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.*
-import logging.*
 import org.slf4j.*
 import java.util.concurrent.*
 import kotlin.reflect.*
@@ -13,9 +11,9 @@ Class that handles commands in the system. It allows registering a channel(s) to
 that come to a particular address. It also allows registering for a particular command class, which
 registers the channel(s) at the fully qualified name of the command class.
  */
-class CommandBusActor(): FunctionActor() {
+class CommandBus() {
   private val addressToChannel = ConcurrentHashMap<String, SendChannel<*>>()
-  private val log = LoggerFactory.getLogger(CommandBusActor::class.java)
+  private val log = LoggerFactory.getLogger(CommandBus::class.java)
 
   fun <T: Command> registerCommand(commandClass: KClass<T>, channel: SendChannel<T>) =
     registerChannelAtAddress<T>(commandClass.qualifiedName!!, channel)
