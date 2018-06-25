@@ -15,16 +15,16 @@ class CommandBus() {
   private val addressToChannel = ConcurrentHashMap<String, SendChannel<*>>()
   private val log = LoggerFactory.getLogger(CommandBus::class.java)
 
-  fun <T: Command> registerCommand(commandClass: KClass<T>, channel: SendChannel<T>) =
+  fun <T: Any> registerCommand(commandClass: KClass<T>, channel: SendChannel<T>) =
     registerChannelAtAddress<T>(commandClass.qualifiedName!!, channel)
 
-  fun <T: Command> registerChannelAtAddress(address: String, channel: SendChannel<T>) =
+  fun <T: Any> registerChannelAtAddress(address: String, channel: SendChannel<T>) =
     addressToChannel.put(address, channel)
 
-  suspend fun <T: Command> sendCommand(command: T) =
+  suspend fun <T: Any> sendCommand(command: T) =
     sendCommandToAddress(command::class.qualifiedName!!, command)
 
-  suspend fun <T: Command> sendCommandToAddress(address: String, command: T) {
+  suspend fun <T: Any> sendCommandToAddress(address: String, command: T) {
     val channel = addressToChannel[address]
     if (channel == null) {
       log.error("Command sent to address without handler: address: ${address}; command: ${command}")

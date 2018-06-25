@@ -7,14 +7,15 @@ import kotlinx.coroutines.experimental.channels.*
 import org.junit.*
 import org.slf4j.*
 import java.util.*
+import java.util.concurrent.atomic.*
 
-data class TestCommand(val id: Int): Command
-data class TestCommand2(val id: Int): Command
-
-private val log = LoggerFactory.getLogger(CommandBusTest::class.java)
+sealed class TestCommands(): Command
+data class TestCommand(val id: Int): TestCommands()
+data class TestCommand2(val id: Int): TestCommands()
 
 internal class CommandBusTest {
   private val log = LoggerFactory.getLogger(CommandBusTest::class.java)
+
   @Test
   fun testMessageReceive() {
     runBlocking { withTimeout(500) {
@@ -129,40 +130,47 @@ internal class CommandBusTest {
   @Test
   fun testCommandFanOut() {
     runBlocking { withTimeout(15000) {
-      val commandChannel = Channel<TestCommand>(Channel.UNLIMITED)
-      val totalActors = 50
-      val actors = (0..totalActors-1).map {TestFanOutActor(it, commandChannel)}.toList()
+      val totalCommands = 500_000
+      val commandChannel = Channel<TestCommands>(totalCommands+1)
+      val totalActors = 3
+      val actorJob = Job()
+      val actors = (0..totalActors-1).map {TestFanOutActor(it, actorJob, commandChannel)}.toList()
 
       val commandBus = CommandBus()
 
       commandBus.registerCommand(TestCommand::class, commandChannel)
 
-      val totalCommands = 5_000
       for (i in (1..totalCommands)) {
         commandBus.sendCommand(TestCommand(i))
+        yield()
       }
 
       actors.forEach {it.close()}
-      actors.forEach {it.join()}
+      yield()
+      actorJob.joinChildren()
       actors.forEach {log.debug("$it")}
-      val sumOfCounters = actors.map { it.counter }.sum()
+      val sumOfCounters = actors.map { it.count }.sum()
       sumOfCounters shouldBe totalCommands
     } }
   }
 }
 
-
-class TestFanOutActor(val id: Int, channel: Channel<TestCommand>)
-  : AMonoActor<TestCommand>(mailbox = channel) {
+class TestFanOutActor(val id: Int, parent: Job, channel: Channel<TestCommands>)
+  : AMonoActor<TestCommands>(parent = parent, mailbox = channel) {
   var random = Random()
-  var counter = 0
+  var counter = AtomicInteger(0)
 
-  override suspend fun onMessage(message: TestCommand) {
-    counter++
-//    if (id != 0) {
-//      val delay = Math.max(100, random.nextInt(id))
-//      delay(delay)
-//    }
+  val count: Int; get() = counter.get()
+
+  override suspend fun onMessage(message: TestCommands) {
+//    log.debug("Received $message")
+    when (message) {
+      is TestCommand -> counter.getAndIncrement()
+      is TestCommand2 -> {
+        log.debug("In TestCommand2 close $id")
+        mailbox.close()
+      }
+    }
   }
 
   override fun toString(): String {
