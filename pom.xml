@@ -24,6 +24,7 @@
 
         <kotlinTest.version>3.0.2</kotlinTest.version>
         <junit.version>5.2.0</junit.version>
+        <ktor.version>0.9.3</ktor.version>
     </properties>
 
     <repositories>
@@ -34,6 +35,14 @@
             <id>central</id>
             <name>bintray</name>
             <url>http://jcenter.bintray.com</url>
+        </repository>
+        <repository>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <id>ktor</id>
+            <name>ktor</name>
+            <url>https://dl.bintray.com/kotlin/ktor</url>
         </repository>
     </repositories>
     <pluginRepositories>
@@ -74,6 +83,12 @@
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-jdk8</artifactId>
             <version>${kotlin.coroutines.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.ktor</groupId>
+            <artifactId>ktor-client-core</artifactId>
+            <version>${ktor.version}</version>
         </dependency>
 
         <dependency>
@@ -130,6 +145,12 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>42.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>25.1-jre</version>
         </dependency>
 
         <dependency>
