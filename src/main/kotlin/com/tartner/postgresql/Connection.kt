@@ -1,98 +1,105 @@
 package com.tartner.postgresql
 
+import com.tartner.cqrs.actors.*
+import io.ktor.network.selector.*
+import io.ktor.network.sockets.*
+import io.ktor.network.sockets.Socket
 import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.io.*
+import java.net.*
+import java.nio.ByteBuffer
 
-/**
-Base interface for all objects that behave like a connection. This trait will usually be
-implemented by the objects that connect to a database, either over the filesystem or sockets.
-{@link Connection} are not supposed to be thread-safe and clients should assume implementations
- *are not** thread safe and shouldn't try to perform more than one statement (either common or
-prepared) at the same time. They should wait for the previous statement to be executed to then be
-able to pick the next one.
+/*
+There needs to be a "central" control. It's the one that has the socket, input, output. The state's
+receive function will be called once we have a message. It looks like the message always have the
+size as part of the message, so we s/b able to get all of it.
 
-You can, for instance, compose on top of the futures returned by this class to execute many
-statements at the same time:
+The flow goes:
 
-{{{
-val handler: Connection = ...
-val result: Deferred<QueryResult> = handler.connect
-.map(parameters => handler)
-.flatMap(connection => connection.sendQuery("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ"))
-.flatMap(query => handler.sendQuery("SELECT 0"))
-.flatMap(query => handler.sendQuery("COMMIT").map(value => query))
+Connect is called; state must be Unconnected
 
-val queryResult: QueryResult = Await.result(result, Duration(5, SECONDS))
-}}}
+Then the state is set to startup message sent and the startup message is sent
+
+The StartupMessageSent state watches for the following possible messages:
+
+  ErrorResponse
+  AuthenticationMD5Password
+  AuthenticationOk
+
+  AuthenticationKerberosV5
+  AuthenticationCleartextPassword
+  AuthenticationSCMCredential
+  AuthenticationGSS
+  AuthenticationSSPI
+  AuthenticationGSSContinue
+  AuthenticationSASL
+  AuthenticationSASLContinue
+  AuthenticationSASLFinal
+  NegotiateProtocolVersion
+
  */
-interface Connection {
 
-  /**
-  Disconnects this object. You should discard this object after calling this method. No more queries
-  will be accepted.
-   */
-  fun disconnect(): Deferred<Connection>
+/*
+Each connection will have a state, this is the startup state basically - we need to stream
+the output from postgresql (like to a multiple listener capable rx or channel)
+There will be a listener that calls the correct state object with either a translated message
+or the message buffer. Seems like central translation isn't possible though, there's no id byte
+on the startup messages.
 
-  /**
-  Connects this object to the database. Connection objects are not necessarily created with a connection to the
-  database so you might have to call this method to be able to run queries against it.
-   */
+For the read, need to launch a coroutine that will fire a message back to the actor's channel
+once data is received. As far as writing goes, would we use the suspending write or launch?
+We're looking for a response (typically), so suspend seems to make sense - although if the
+read channel is on a separate coroutine, then that won't work. I think the separate coroutine
+is wrong now.
+ */
 
-  fun connect(): Deferred<Connection>
+class Connection(val configuration: Configuration): FunctionActor() {
+  private enum class State { Unconnected, Connected, Error }
 
-  /** Checks whether we are still connected to the database. */
-  val isConnected: Boolean
+  // TODO: set by configuration
+  private val inputArray = ByteArray(configuration.maximumMessageSize)
 
-  /**
-  Sends a statement to the database. The statement can be anything your database can execute. Not
-  all statements will return a collection of rows, so check the returned object if there are rows
-  available.
-  */
-  fun sendQuery(query: String): Deferred<QueryResult>
+  private lateinit var socket: Socket
+  private lateinit var input: ByteReadChannel
+  private lateinit var output: ByteWriteChannel
 
-  /**
-  Sends a prepared statement to the database. Prepared statements are special statements that are
-  pre-compiled by the database to run faster, they also allow you to avoid SQL injection attacks by
-  not having to concatenate strings from possibly unsafe sources (like users) and sending them
-  directy to the database.
+  suspend fun connect() = actAndReply {
+    // TODO: if already connected, error; need to check for errors in connection too
+    // TODO: I don't think we should hard code CommonPool here
+    socket = aSocket(ActorSelectorManager(CommonPool)).tcp()
+      .connect(configuration.host, configuration.port)
 
-  When sending a prepared statement, you can insert ? signs in your statement and then provide
-  values at the method call 'values' parameter, as in:
+    input = socket.openReadChannel()
+    output = socket.openWriteChannel(autoFlush = true)
 
-  {{{
-  connection.sendPreparedStatement( "SELECT * FROM users WHERE users.login = ?", Array( "john-doe" ) )
-  }}}
+    val startupMessage = createStartupMessage()
 
-  As you are using the ? as the placeholder for the value, you don't have to perform any kind of
-  manipulation to the value, just provide it as is and the database will clean it up. You must
-  provide as many parameters as you have provided placeholders, so, if your query is as "INSERT INTO
-  users (login,email) VALUES (?,?)" you have to provide an array with at least two values, as in:
+    output.writeAvailable(startupMessage)
 
-  {{{
-  Array("john-doe", "doe@mail.com")
-  }}}
+    val response = input.readAvailable(inputArray)
+    inputArray
+  }
 
-  You can still use this method if your statement doesn't take any parameters, the default is an
-  empty collection.
-   */
-  fun sendPreparedStatement(query: String, values: List<Any> = listOf()): Deferred<QueryResult>
+  private fun createStartupMessage(): ByteArray {
+    val buffer: ByteBuffer = ByteBuffer.allocate(1024)
 
-  /**
-  Executes an (asynchronous) function within a transaction block. If the function completes
-  successfully, the transaction is committed, otherwise it is aborted.
-   */
-//  fun <A> inTransaction(f : (Connection) -> Deferred<A>): Deferred <A>
-//  {
-//    this.sendQuery("BEGIN").flatMap {
-//      _ =>
-//      val p = scala.concurrent.Promise[A]()
-//      f(this).onComplete {
-//        r =>
-//        this.sendQuery(if (r.isFailure) "ROLLBACK" else "COMMIT").onComplete {
-//          case scala . util . Failure (e) if r.isSuccess => p.failure(e)
-//          case _ => p . complete (r)
-//        }
-//      }
-//      p.future
-//    }
-//  }
+    buffer.position(Integer.BYTES)
+
+    buffer.putShort(3)
+    buffer.putShort(0)
+    buffer.put("user".toByteArray())
+    buffer.put(0)
+    buffer.put("bamboozle".toByteArray())
+    buffer.put(0)
+    buffer.put(0)
+    val size = buffer.position()
+    buffer.rewind()
+    buffer.putInt(size)
+    buffer.position(size)
+    buffer.limit(size)
+
+    val byteArray = ByteArray(size) {it -> buffer[it]}
+    val array = byteArray.copyOf(size)
+    return array
+  }
 }

@@ -1,4 +1,4 @@
-package com.tartner.postgresql
+package com.tartner.postgresql.scala
 
 /**
  *

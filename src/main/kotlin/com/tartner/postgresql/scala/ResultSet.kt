@@ -1,4 +1,4 @@
-package com.tartner.postgresql
+package com.tartner.postgresql.scala
 
 /**
  Represents the collection of rows that is returned from a statement inside a {@link QueryResult}.

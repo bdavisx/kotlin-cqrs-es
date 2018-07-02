@@ -11,10 +11,10 @@ import kotlin.coroutines.experimental.*
  * @param T type of messages which are stored in the mailbox
  */
 abstract class AAbstractActor<T>(
-  context: CoroutineContext = DefaultDispatcher,
-  parent: Job? = null,
-  start: CoroutineStart = CoroutineStart.DEFAULT,
-  val mailbox: Channel<T> = Channel<T>(Channel.UNLIMITED)
+  protected val context: CoroutineContext = DefaultDispatcher,
+  protected val parent: Job? = null,
+  protected val start: CoroutineStart = CoroutineStart.DEFAULT,
+  protected val mailbox: Channel<T> = Channel<T>(Channel.UNLIMITED)
 ): ActorTraits() {
 
   final override val job: Job

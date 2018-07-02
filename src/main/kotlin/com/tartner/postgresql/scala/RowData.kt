@@ -1,4 +1,4 @@
-package com.tartner.postgresql
+package com.tartner.postgresql.scala
 
 /** Represents a row from a database, allows clients to access rows by column number or column name. */
 interface RowData: List<Any> {
