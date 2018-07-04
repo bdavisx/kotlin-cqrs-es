@@ -11,7 +11,10 @@ internal class ConnectionTest {
   @Test
   fun test() {
     runBlocking {
-      val configuration = Configuration(username = "checklist_user")
+      val configuration = Configuration(
+        username = System.getProperty("DATABASE_USER_USERID")!!,
+        password = System.getProperty("DATABASE_USER_PASSWORD")!!)
+
       val connection = Connection(configuration)
 
       val connectionResult: Either<Throwable, ByteBuffer> = connection.connect()
@@ -20,11 +23,11 @@ internal class ConnectionTest {
           val inputArray = connectionResult.b
           println(inputArray)
 
-          val length = inputArray.getInt(1)
+          val length = inputArray.getInt(1) + 1
           println("length = $length")
 
           val text = StringBuilder()
-          for(i in 0..min(13, length-1)) {
+          for(i in 0..min(255, length-1)) {
             val value = inputArray[i]
             text.append("${value.toString()} - 0x${value.toString(16)} - ${value.toChar()}\n")
           }

@@ -6,6 +6,7 @@ import io.ktor.network.selector.*
 import io.ktor.network.sockets.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.io.*
+import org.slf4j.*
 import java.nio.ByteBuffer
 import java.nio.channels.*
 
@@ -58,6 +59,8 @@ class Connection(val configuration: Configuration): FunctionActor() {
     const val majorVersion: Short = 3
     const val minorVersion: Short = 0
   }
+  private val log = LoggerFactory.getLogger(Connection::class.java)
+
   private enum class State { Unconnected, Connected, Error }
 
   // TODO: set by configuration
@@ -80,11 +83,51 @@ class Connection(val configuration: Configuration): FunctionActor() {
 
     output.writeAvailable(startupMessage)
 
-    val response = input.readAvailable(inputArray)
+    var response = input.readAvailable(inputArray)
     if (response == -1) {
       // TODO: channel closed, need to return a failure, should it be this or something else?
       Either.left(ClosedChannelException())
     } else {
+      val messageType = inputArray.get(0)
+      val length = inputArray.getInt(1)
+
+      // 52 == 'R' or Authentication message, has subtype
+      if (messageType == 82.toByte()) {
+        val messageSubtype = inputArray.getInt(1 + Integer.BYTES)
+
+        // 5 == AuthenticationMD5Password
+        if (messageSubtype == 5) {
+          val saltArray = ByteArray(4)
+          inputArray.position(1 + (2*Integer.BYTES))
+          val salt = inputArray.get(saltArray, 0, 4)
+
+          // TODO: check to make sure password exists
+          val passwordBytes = MD5Digest.encode(
+            configuration.username.toByteArray(),
+            configuration.password!!.toByteArray(),
+            saltArray)
+
+          val messageSize = 1 + Integer.BYTES + passwordBytes.size
+          val passwordMessage = ByteBuffer.allocate(messageSize+1)
+          passwordMessage.put('p'.toByte())
+          passwordMessage.putInt(messageSize)
+          passwordMessage.put(passwordBytes)
+          passwordMessage.put(0)
+          passwordMessage.position(0)
+
+          log.debug("Getting ready to write password message: $passwordMessage")
+          val bytesWritten = output.writeAvailable(passwordMessage)
+
+          log.debug("Getting ready to read the password message resposne. Bytes written: $bytesWritten")
+          inputArray.position(0)
+          response = input.readAvailable(inputArray)
+          log.debug("Read response: $response; inputArray = $inputArray")
+        }
+      } else {
+        Either.left(RuntimeException("Unknown messageType == $messageType"))
+      }
+
+      log.debug("Returning input array")
       Either.right(inputArray)
     }
   }
