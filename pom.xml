@@ -97,6 +97,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.litote.kmongo</groupId>
+            <artifactId>kmongo-coroutine</artifactId>
+            <version>3.8.0</version>
+        </dependency>
+
+        <dependency>
             <groupId>io.arrow-kt</groupId>
             <artifactId>arrow-core</artifactId>
             <version>0.6.1</version>
@@ -147,18 +153,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.0.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>25.1-jre</version>
-        </dependency>
-
-        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
             <version>${jackson.version}</version>
@@ -190,6 +184,7 @@
             <version>1.2.3</version>
         </dependency>
 
+        <!-- Test dependencies -->
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-launcher</artifactId>

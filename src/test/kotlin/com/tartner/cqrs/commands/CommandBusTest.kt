@@ -3,6 +3,7 @@ package com.tartner.cqrs.commands
 import com.tartner.cqrs.actors.*
 import io.kotlintest.*
 import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.actors.*
 import kotlinx.coroutines.experimental.channels.*
 import org.junit.*
 import org.slf4j.*
@@ -129,31 +130,45 @@ internal class CommandBusTest {
 
   @Test
   fun testCommandFanOut() {
-    runBlocking { withTimeout(15000) {
-      val totalCommands = 500_000
-      val commandChannel = Channel<TestCommands>(totalCommands+1)
-      val totalActors = 3
-      val actorJob = Job()
-      val actors = (0..totalActors-1).map {TestFanOutActor(it, actorJob, commandChannel)}.toList()
+    runBlocking {
+      withTimeout(25000) {
+        val totalCommands = 5_000_000
+        val commandChannel = Channel<TestCommands>(Channel.UNLIMITED)
+        val totalActors = 10
+        val actorJob = Job()
+        val actors = (0..totalActors-1).map {TestFanOutActor(it, actorJob, commandChannel)}.toList()
 
-      val commandBus = CommandBus()
+        val commandBus = CommandBus()
 
-      commandBus.registerCommand(TestCommand::class, commandChannel)
+        commandBus.registerCommand(TestCommand::class, commandChannel)
 
-      for (i in (1..totalCommands)) {
-        commandBus.sendCommand(TestCommand(i))
+        for (i in (1..totalCommands)) {
+          commandBus.sendCommand(TestCommand(i))
+  //        yield()
+        }
+
         yield()
-      }
 
-      actors.forEach {it.close()}
-      yield()
-      actorJob.joinChildren()
-      actors.forEach {log.debug("$it")}
-      val sumOfCounters = actors.map { it.count }.sum()
-      sumOfCounters shouldBe totalCommands
-    } }
+        log.debug("Delaying for message catch up")
+        delay(2500)
+
+        actors.forEach {it.close()}
+        actors.forEach {log.debug("$it")}
+        val sumOfCounters = actors.map { it.count }.sum()
+        sumOfCounters shouldBe totalCommands
+        actorJob.joinChildren()
+      }
+    }
   }
 }
+
+//class CounterActor(): AMonoActor<Int>() {
+//  var counter: Int = 0
+//
+//  override suspend fun onMessage(message: Int) {
+//    counter += message
+//  }
+//}
 
 class TestFanOutActor(val id: Int, parent: Job, channel: Channel<TestCommands>)
   : AMonoActor<TestCommands>(parent = parent, mailbox = channel) {
@@ -163,11 +178,11 @@ class TestFanOutActor(val id: Int, parent: Job, channel: Channel<TestCommands>)
   val count: Int; get() = counter.get()
 
   override suspend fun onMessage(message: TestCommands) {
-//    log.debug("Received $message")
+//    launch(job) { log.debug("Received $message") }
     when (message) {
       is TestCommand -> counter.getAndIncrement()
       is TestCommand2 -> {
-        log.debug("In TestCommand2 close $id")
+        launch { log.debug("In TestCommand2 close $id") }
         mailbox.close()
       }
     }

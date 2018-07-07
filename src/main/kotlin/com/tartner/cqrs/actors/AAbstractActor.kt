@@ -3,6 +3,7 @@ package com.tartner.cqrs.actors
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.actors.*
 import kotlinx.coroutines.experimental.channels.*
+import org.slf4j.*
 import kotlin.coroutines.experimental.*
 
 /**
@@ -16,6 +17,7 @@ abstract class AAbstractActor<T>(
   protected val start: CoroutineStart = CoroutineStart.DEFAULT,
   protected val mailbox: Channel<T> = Channel<T>(Channel.UNLIMITED)
 ): ActorTraits() {
+  private val log = LoggerFactory.getLogger(AAbstractActor::class.java)
 
   final override val job: Job
 
@@ -38,9 +40,13 @@ abstract class AAbstractActor<T>(
   private suspend fun actorLoop() {
     var exception: Throwable? = null
     try {
-      for (message in mailbox) {
+      while (true) {
+        val message = mailbox.receive()
         onMessage(message)
       }
+    } catch (e: ClosedReceiveChannelException) {
+      // just means that the mailbox was closed
+      log.debug("Mailbox closed")
     } catch (e: Throwable) {
       exception = e
       handleCoroutineException(coroutineContext, e)
