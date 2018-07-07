@@ -40,10 +40,13 @@ abstract class AAbstractActor<T>(
   private suspend fun actorLoop() {
     var exception: Throwable? = null
     try {
-      while (true) {
-        val message = mailbox.receive()
+      for (message in mailbox) {
         onMessage(message)
       }
+//      while (true) {
+//        val message = mailbox.receive()
+//        onMessage(message)
+//      }
     } catch (e: ClosedReceiveChannelException) {
       // just means that the mailbox was closed
       log.debug("Mailbox closed")

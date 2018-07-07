@@ -132,7 +132,7 @@ internal class CommandBusTest {
   fun testCommandFanOut() {
     runBlocking {
       withTimeout(25000) {
-        val totalCommands = 5_000_000
+        val totalCommands = 50_000
         val commandChannel = Channel<TestCommands>(Channel.UNLIMITED)
         val totalActors = 10
         val actorJob = Job()
@@ -148,9 +148,8 @@ internal class CommandBusTest {
         }
 
         yield()
-
-        log.debug("Delaying for message catch up")
-        delay(2500)
+        log.debug("Delaying for catchup")
+        delay(250)
 
         actors.forEach {it.close()}
         actors.forEach {log.debug("$it")}
