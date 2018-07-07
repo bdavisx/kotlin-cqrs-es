@@ -1,9 +1,7 @@
 package com.tartner.cqrs.actors
 
-import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.actors.*
 import kotlinx.coroutines.experimental.channels.*
-import kotlin.coroutines.experimental.*
 
 /**
  * [MonoActor] is the base for all stateful actors, who have to process one [type][T] of message
@@ -26,12 +24,7 @@ import kotlin.coroutines.experimental.*
  *
  * @param T type of the message this actor can handle
  */
-abstract class AMonoActor<T>(
-  context: CoroutineContext = DefaultDispatcher,
-  parent: Job? = null,
-  start: CoroutineStart = CoroutineStart.DEFAULT,
-  mailbox: Channel<T> = Channel<T>(Channel.UNLIMITED)
-) : AAbstractActor<T>(context, parent, start, mailbox) {
+abstract class AMonoActor<T>(context: ActorContext<T> = ActorContext()): AAbstractActor<T>(context) {
   /**
    * Sends the message to the actor, which later will be processed by [receive]
    *
@@ -39,7 +32,7 @@ abstract class AMonoActor<T>(
    */
   suspend fun send(message: T) {
     job.start()
-    mailbox.send(message)
+    context.mailbox.send(message)
   }
 }
 

@@ -171,7 +171,7 @@ internal class CommandBusTest {
 //}
 
 class TestFanOutActor(val id: Int, parent: Job, channel: Channel<TestCommand>)
-  : AMonoActor<TestCommand>(parent = parent, mailbox = channel) {
+  : AMonoActor<TestCommand>(ActorContext(parent = parent, mailbox = channel)) {
   var random = Random()
   var counter = AtomicInteger(0)
 

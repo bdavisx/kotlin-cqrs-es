@@ -6,41 +6,43 @@ import kotlinx.coroutines.experimental.channels.*
 import org.slf4j.*
 import kotlin.coroutines.experimental.*
 
+data class ActorContext<T>(
+  val coroutineContext: CoroutineContext = DefaultDispatcher,
+  val parent: Job? = null,
+  val start: CoroutineStart = CoroutineStart.DEFAULT,
+  val mailbox: Channel<T> = Channel<T>(Channel.UNLIMITED)
+)
+
 /**
  * Base class for actors implementation, which provides implementation for [ActorTraits]
  *
  * @param T type of messages which are stored in the mailbox
  */
-abstract class AAbstractActor<T>(
-  protected val context: CoroutineContext = DefaultDispatcher,
-  protected val parent: Job? = null,
-  protected val start: CoroutineStart = CoroutineStart.DEFAULT,
-  protected val mailbox: Channel<T> = Channel<T>(Channel.UNLIMITED)
-): ActorTraits() {
+abstract class AAbstractActor<T>(protected val context: ActorContext<T>): ActorTraits() {
   private val log = LoggerFactory.getLogger(AAbstractActor::class.java)
 
   final override val job: Job
 
   init {
-    job = launch(context, start, parent) {
+    job = launch(context.coroutineContext, context.start, context.parent) {
       actorLoop()
     }
     job.invokeOnCompletion { onClose() }
   }
 
   override fun close() {
-    mailbox.close()
+    context.mailbox.close()
   }
 
   override fun kill() {
     job.cancel()
-    mailbox.cancel()
+    context.mailbox.cancel()
   }
 
   private suspend fun actorLoop() {
     var exception: Throwable? = null
     try {
-      for (message in mailbox) {
+      for (message in context.mailbox) {
         onMessage(message)
       }
 //      while (true) {
@@ -55,7 +57,7 @@ abstract class AAbstractActor<T>(
       handleCoroutineException(coroutineContext, e)
     } finally {
       job.cancel(exception)
-      mailbox.close()
+      context.mailbox.close()
     }
   }
 

@@ -1,40 +1,45 @@
 package com.tartner.cqrs.actors
 
+import com.tartner.cqrs.commands.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.*
+import org.junit.*
 import org.slf4j.*
 import java.util.concurrent.*
 
 val log = LoggerFactory.getLogger(TestSub::class.java)
 
-fun main(args: Array<String>) {
-//  val kodein = Kodein {
-//    bind<TestSub>() with factory {channel: FunctionActorSendChannel -> TestSub(channel)}
-//  }
+internal class FunctionActorTest {
+  private val log = LoggerFactory.getLogger(FunctionActorTest::class.java)
 
-  log.debug("Start")
-  runBlocking {
-    val actors = ConcurrentLinkedQueue<TestSub>()
-    for (x in 1..10000) {
-      val actor = TestSub(x, Channel(Channel.UNLIMITED))
-      actors.add(actor)
-      launch {
-        log.debug("Starting runBlocking $x")
-        log.debug("TestSub actor: $actor, calling opA")
-        actor.operationA()
-        log.debug("TestSub actor: $actor, calling opB")
-        val opB = actor.operationB()
-        log.debug("OpB result = $opB")
-        log.debug("TestSub actor: $actor, after calling opB")
-        actor.close()
+  @Test
+  fun test() {
+    log.debug("Start")
+    runBlocking {
+      val actors = ConcurrentLinkedQueue<TestSub>()
+      for (x in 1..10000) {
+        val actor = TestSub(x, Channel(Channel.UNLIMITED))
+        actors.add(actor)
+        launch {
+          com.tartner.cqrs.actors.log.debug("TestSub actor: $actor, calling opA")
+          actor.operationA()
+          com.tartner.cqrs.actors.log.debug("TestSub actor: $actor, calling opB")
+          val opB = actor.operationB()
+          com.tartner.cqrs.actors.log.debug("OpB result = $opB")
+          com.tartner.cqrs.actors.log.debug("TestSub actor: $actor, after calling opB")
+          actor.close()
+        }
       }
+      actors.forEach {it.join()}
+      com.tartner.cqrs.actors.log.debug("Done")
     }
-    actors.forEach {it.join()}
-    log.debug("Done")
   }
+
 }
 
-class TestSub(val id: Int, mailbox: Channel<Task<*>>): FunctionActor(mailbox = mailbox) {
+class TestSub(val id: Int, mailbox: Channel<Task<*>>)
+  : FunctionActor(ActorContext(mailbox = mailbox)) {
+  
   suspend fun operationA(): Deferred<Unit> {
     log.debug("Outside op a act $id")
     return act {
@@ -58,6 +63,3 @@ class TestSub(val id: Int, mailbox: Channel<Task<*>>): FunctionActor(mailbox = m
 
 }
 
-internal class FunctionActorTest {
-
-}

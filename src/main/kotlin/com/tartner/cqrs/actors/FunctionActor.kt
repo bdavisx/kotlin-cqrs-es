@@ -4,7 +4,6 @@ import com.tartner.cqrs.actors.FunctionActor.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.*
 import org.slf4j.*
-import kotlin.coroutines.experimental.*
 
 typealias FunctionActorSendChannel = Channel<Task<*>>
 
@@ -15,16 +14,12 @@ typealias FunctionActorSendChannel = Channel<Task<*>>
  WARNING: Do no use the actor function default capacity of 0 or the actor will block on sending
  itself a message.
  */
-abstract class FunctionActor(
-  context: CoroutineContext = DefaultDispatcher,
-  parent: Job? = null,
-  start: CoroutineStart = CoroutineStart.DEFAULT,
-  mailbox: Channel<Task<*>> = Channel(Channel.UNLIMITED)
-  ) : AAbstractActor<Task<*>>(context, parent, start, mailbox) {
+abstract class FunctionActor(context: ActorContext<Task<*>> = ActorContext())
+  : AAbstractActor<Task<*>>(context) {
 
   suspend fun <T: Any> act(block: suspend () -> T): Deferred<T> {
     val task = Task(block)
-    mailbox.send(task)
+    context.mailbox.send(task)
     return task
   }
 
