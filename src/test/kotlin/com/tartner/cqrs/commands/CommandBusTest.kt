@@ -131,9 +131,9 @@ internal class CommandBusTest {
   @Test
   fun testCommandFanOut() {
     runBlocking {
-      withTimeout(25000) {
+      withTimeout(2500) {
         val totalCommands = 50_000
-        val commandChannel = Channel<TestCommands>(Channel.UNLIMITED)
+        val commandChannel = Channel<TestCommand>(Channel.UNLIMITED)
         val totalActors = 10
         val actorJob = Job()
         val actors = (0..totalActors-1).map {TestFanOutActor(it, actorJob, commandChannel)}.toList()
@@ -159,6 +159,7 @@ internal class CommandBusTest {
       }
     }
   }
+
 }
 
 //class CounterActor(): AMonoActor<Int>() {
@@ -169,22 +170,16 @@ internal class CommandBusTest {
 //  }
 //}
 
-class TestFanOutActor(val id: Int, parent: Job, channel: Channel<TestCommands>)
-  : AMonoActor<TestCommands>(parent = parent, mailbox = channel) {
+class TestFanOutActor(val id: Int, parent: Job, channel: Channel<TestCommand>)
+  : AMonoActor<TestCommand>(parent = parent, mailbox = channel) {
   var random = Random()
   var counter = AtomicInteger(0)
 
   val count: Int; get() = counter.get()
 
-  override suspend fun onMessage(message: TestCommands) {
+  override suspend fun onMessage(message: TestCommand) {
 //    launch(job) { log.debug("Received $message") }
-    when (message) {
-      is TestCommand -> counter.getAndIncrement()
-      is TestCommand2 -> {
-        launch { log.debug("In TestCommand2 close $id") }
-        mailbox.close()
-      }
-    }
+    counter.getAndIncrement()
   }
 
   override fun toString(): String {
