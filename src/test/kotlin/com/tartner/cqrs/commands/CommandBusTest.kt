@@ -3,7 +3,6 @@ package com.tartner.cqrs.commands
 import com.tartner.cqrs.actors.*
 import io.kotlintest.*
 import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.actors.*
 import kotlinx.coroutines.experimental.channels.*
 import org.junit.*
 import org.slf4j.*
@@ -144,7 +143,6 @@ internal class CommandBusTest {
 
         for (i in (1..totalCommands)) {
           commandBus.sendCommand(TestCommand(i))
-  //        yield()
         }
 
         yield()
@@ -161,14 +159,6 @@ internal class CommandBusTest {
   }
 
 }
-
-//class CounterActor(): AMonoActor<Int>() {
-//  var counter: Int = 0
-//
-//  override suspend fun onMessage(message: Int) {
-//    counter += message
-//  }
-//}
 
 class TestFanOutActor(val id: Int, parent: Job, channel: Channel<TestCommand>)
   : AMonoActor<TestCommand>(ActorContext(parent = parent, mailbox = channel)) {

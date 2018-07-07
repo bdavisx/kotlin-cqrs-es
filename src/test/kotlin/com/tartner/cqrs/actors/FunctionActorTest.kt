@@ -1,6 +1,5 @@
 package com.tartner.cqrs.actors
 
-import com.tartner.cqrs.commands.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.*
 import org.junit.*
@@ -39,7 +38,7 @@ internal class FunctionActorTest {
 
 class TestSub(val id: Int, mailbox: Channel<Task<*>>)
   : FunctionActor(ActorContext(mailbox = mailbox)) {
-  
+
   suspend fun operationA(): Deferred<Unit> {
     log.debug("Outside op a act $id")
     return act {
