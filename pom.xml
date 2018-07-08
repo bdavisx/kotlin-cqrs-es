@@ -19,12 +19,13 @@
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <kotlin.coroutines.version>0.22.6-SNAPSHOT</kotlin.coroutines.version>
 
-        <vertx.version>3.5.1</vertx.version>
+        <ktor.version>0.9.3</ktor.version>
+        <kmongo.version>3.8.0</kmongo.version>
+
         <jackson.version>2.9.5</jackson.version>
 
         <kotlinTest.version>3.0.2</kotlinTest.version>
         <junit.version>5.2.0</junit.version>
-        <ktor.version>0.9.3</ktor.version>
     </properties>
 
     <repositories>
@@ -99,7 +100,12 @@
         <dependency>
             <groupId>org.litote.kmongo</groupId>
             <artifactId>kmongo-coroutine</artifactId>
-            <version>3.8.0</version>
+            <version>${kmongo.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.litote.kmongo</groupId>
+            <artifactId>kmongo-flapdoodle</artifactId>
+            <version>${kmongo.version}</version>
         </dependency>
 
         <dependency>
