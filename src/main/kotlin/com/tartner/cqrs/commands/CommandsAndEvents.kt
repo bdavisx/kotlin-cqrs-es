@@ -18,6 +18,9 @@ interface HasAggregateVersion: HasAggregateId {
   val aggregateVersion: Long
 }
 
+/** Also acts as a correlation Id when needed. */
+typealias CommandId = UUID
+
 annotation class EventHandler
 interface DomainEvent: SerializableCQRSObject
 
