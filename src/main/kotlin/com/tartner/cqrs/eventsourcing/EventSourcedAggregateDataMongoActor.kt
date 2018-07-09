@@ -8,6 +8,7 @@ import com.tartner.utilities.jackson.*
 import com.tartner.vertx.functional.*
 import org.bson.*
 import org.litote.kmongo.coroutine.*
+import org.slf4j.*
 import java.time.*
 import kotlin.reflect.*
 
@@ -33,6 +34,7 @@ class EventSourcedAggregateDataMongoActor(
     const val eventsCollectionName = "AggregateEvents"
     const val snapshotsCollectionName = "AggregateSnapshots"
 
+    private val log = LoggerFactory.getLogger(EventSourcedAggregateDataMongoActor::class.java)
   }
 
   suspend fun loadAggregateEvents(aggregateId: AggregateId, aggregateVersion: Long) = actAndReply {
@@ -42,6 +44,8 @@ class EventSourcedAggregateDataMongoActor(
 //    for (event in events) {
 //
 //    }
+    log.debug("$events")
+    events
   }
 
   /**
@@ -65,7 +69,7 @@ class EventSourcedAggregateDataMongoActor(
       createdAt, authenticatedUserId, commandId, events)
     val serializedWrapper = mapper.writeValueAsString(wrapper)
 
-    val collection = databaseFactory.database.getCollectionOfName<EventWrapper>(eventsCollectionName)
+    val collection = databaseFactory.database.getCollectionOfName<Document>(eventsCollectionName)
     collection.insertOne(serializedWrapper)
 
     ErrorReply("Unimplemented", this::class).createLeft()

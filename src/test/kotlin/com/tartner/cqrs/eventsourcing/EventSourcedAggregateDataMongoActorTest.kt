@@ -1,10 +1,9 @@
 package com.tartner.cqrs.eventsourcing
 
 import com.mongodb.async.client.*
-import com.natpryce.hamkrest.*
 import com.tartner.cqrs.commands.*
 import com.tartner.utilities.jackson.*
-import io.kotlintest.*
+import io.kotlintest.matchers.*
 import kotlinx.coroutines.experimental.*
 import org.bson.*
 import org.bson.types.*
@@ -39,9 +38,9 @@ internal class EventSourcedAggregateDataMongoActorTest() {
     val eventsIterator = actor.loadAggregateEvents(aggregateId, 0)
     val loadedEvents = eventsIterator.toList()
     log.debug("loadedEvents = $loadedEvents")
-    val document: Document = loadedEvents[0]
-    log.debug("$document")
-    loadedEvents.size shouldBe greaterThan(0)
+    val wrapper: Document = loadedEvents[0]
+    log.debug("$wrapper")
+    loadedEvents.size shouldBe gt(0)
   } }
 }
 
