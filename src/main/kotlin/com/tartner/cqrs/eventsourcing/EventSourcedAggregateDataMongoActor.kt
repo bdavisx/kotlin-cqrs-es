@@ -1,6 +1,7 @@
 package com.tartner.cqrs.eventsourcing
 
 import arrow.core.*
+import com.fasterxml.jackson.annotation.*
 import com.mongodb.async.client.*
 import com.tartner.cqrs.actors.*
 import com.tartner.cqrs.commands.*
@@ -12,6 +13,7 @@ import org.slf4j.*
 import java.time.*
 import kotlin.reflect.*
 
+@JsonIgnoreProperties("_id")
 data class EventWrapper(
   val aggregateId: AggregateId,
   val aggregateClassName: String,

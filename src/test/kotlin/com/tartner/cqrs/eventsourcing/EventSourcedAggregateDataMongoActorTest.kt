@@ -1,5 +1,6 @@
 package com.tartner.cqrs.eventsourcing
 
+import com.fasterxml.jackson.module.kotlin.*
 import com.mongodb.async.client.*
 import com.tartner.cqrs.commands.*
 import com.tartner.utilities.jackson.*
@@ -20,6 +21,7 @@ data class TestCreateSnapshot(override val aggregateId: UUID, override val aggre
 internal class EventSourcedAggregateDataMongoActorTest() {
   private val log = LoggerFactory.getLogger(EventSourcedAggregateDataMongoActorTest::class.java)
 
+  val mapper = TypedObjectMapper()
   val aggregateId = UUID.fromString("c562d873-7d21-4191-ac4c-fdc762f2eed4")
 
   @Test
@@ -38,7 +40,9 @@ internal class EventSourcedAggregateDataMongoActorTest() {
     val eventsIterator = actor.loadAggregateEvents(aggregateId, 0)
     val loadedEvents = eventsIterator.toList()
     log.debug("loadedEvents = $loadedEvents")
-    val wrapper: Document = loadedEvents[0]
+    val wrapperDocument: Document = loadedEvents[0]
+    val wrapperJson = wrapperDocument.toJson()
+    val wrapper = mapper.readValue<EventWrapper>(wrapperJson)
     log.debug("$wrapper")
     loadedEvents.size shouldBe gt(0)
   } }
